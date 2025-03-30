@@ -1,6 +1,7 @@
 import random
 
-from classes.custom_exceptions import UserAlreadyExistsException, UserNotFoundException, PasswordIsTooShortException
+from classes.custom_exceptions import UserAlreadyExistsException, UserNotFoundException, PasswordIsTooShortException, \
+	InvalidPasswordException
 from classes.jwt_manager import JWTManager
 from classes.password_manager import PasswordManager
 from orm_managers import UserORMManager, CartOrderORMManager, DeliveryItemORMManager
@@ -23,15 +24,17 @@ class AppManager:
 
 	def validate_login(self, email: str, password: str) -> bool:
 		user: UserORMModel = self.user_manager.get_by_email(email)
-		if not user:
+		if user is None:
 			raise UserNotFoundException()
-		return self.password_manager.verify_password(password, user.password)
+		if self.password_manager.verify_password(password, user.password) is False:
+			raise InvalidPasswordException()
+		return True
 
 	def register_user(self, email: str, password: str) -> bool:
 		if self.user_manager.get_by_email(email):
 			raise UserAlreadyExistsException()
 		if len(password) < 3:
-			raise PasswordIsTooShortException()
+			raise PasswordIsTooShortException(min_length=3)
 		user = UserORMModel(email=email, password=self.password_manager.hash_password(password))
 		self.user_manager.add(user)
 		return True

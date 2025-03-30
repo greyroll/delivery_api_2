@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.responses import RedirectResponse
 
 from classes.app_manager import AppManager
+from classes.custom_exceptions import AppBaseException
 
 app = FastAPI()
 # Mounting the static folder
@@ -17,6 +18,20 @@ templates = Jinja2Templates(directory="templates")
 
 load_dotenv()
 app_manager = AppManager()
+
+
+@app.exception_handler(AppBaseException)
+async def app_exception_handler(request: Request, exc: AppBaseException):
+	return templates.TemplateResponse(
+		request=request,
+		name="error.html",
+		status_code=exc.status_code,
+		context={
+			"status_code": exc.status_code,
+			"detail": exc.message,
+			"title": "Something went wrong",
+		},
+	)
 
 
 @app.get("/", response_class=HTMLResponse)
