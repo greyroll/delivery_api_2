@@ -32,15 +32,23 @@
 <body>
   <!-- Header -->
   <header class="container mt-3">
-    <nav class="py-1 navbar navbar-dark bg-dark d-flex justify-content-between">
-      <p class="h5 my-2 text-white bg-dark">Stepik Delivery</p>
-      <p class="my-2 text-white bg-dark">
-        Корзина ({{ cart_count }} товара(ов), {{ cart_total }} руб.)
-      </p>
-      <div>
-        <a href="#" class="btn btn-warning btn-sm">Войти</a>
-        <a href="#" class="btn btn-light btn-sm d-none">Выйти</a>
-      </div>
+    <nav class="py-2 navbar navbar-dark bg-dark d-flex justify-content-between align-items-center">
+
+      <!-- Логотип с ссылкой на главную -->
+      <a href="/" class="navbar-brand h5 mb-0 text-white">Stepik Delivery</a>
+
+      {% if context['is_logged_in'] %}
+        <div class="d-flex align-items-center gap-3">
+          <a href="/cart" class="text-white mr-3">
+            🛒 Корзина ({{ order.cart_count }} тов., {{ order.total }} руб.)
+          </a>
+          <a href="/logout" class="btn btn-outline-light btn-sm">Выйти</a>
+        </div>
+      {% else %}
+        <div>
+          <a href="/login" class="btn btn-warning btn-sm">Войти</a>
+        </div>
+      {% endif %}
     </nav>
   </header>
 

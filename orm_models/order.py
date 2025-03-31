@@ -17,4 +17,12 @@ class OrderORMModel(SQLModel, table=True):
 	total: float
 
 	user: UserORMModel = Relationship(back_populates="orders")
-	items: list[ItemOrder] = Relationship(back_populates="order")
+	items: list[ItemOrder] = Relationship(back_populates="order", sa_relationship_kwargs={"lazy": "selectin"})
+
+	@property
+	def cart_count(self):
+		return len(self.items)
+
+	@property
+	def total(self) -> float:
+		return sum(item.quantity * item.price for item in self.items)

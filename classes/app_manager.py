@@ -5,7 +5,7 @@ from classes.custom_exceptions import UserAlreadyExistsException, UserNotFoundEx
 from classes.jwt_manager import JWTManager
 from classes.password_manager import PasswordManager
 from orm_managers import UserORMManager, CartOrderORMManager, DeliveryItemORMManager
-from orm_models import DeliveryItemORMModel, UserORMModel
+from orm_models import DeliveryItemORMModel, UserORMModel, OrderORMModel
 
 
 class AppManager:
@@ -38,4 +38,24 @@ class AppManager:
 		user = UserORMModel(email=email, password=self.password_manager.hash_password(password))
 		self.user_manager.add(user)
 		return True
+
+	def get_auth_context(self, token: str | None) -> dict:
+		"""
+		Возвращает контекст авторизации для шаблона.
+		"""
+		payload = self.jwt_manager.get_payload_or_none(token)
+		return {
+			"is_logged_in": payload is not None,
+			"user_email": payload.get("sub") if payload else None
+		}
+
+	def get_order_by_auth_context(self, context: dict) -> OrderORMModel | None:
+		user_email = context.get("user_email")
+		user: UserORMModel = self.user_manager.get_by_email(user_email)
+		if user is None:
+			raise UserNotFoundException()
+		order: OrderORMModel = self.cart_manager.get_active_order_by_user_id(user.id)
+		if order is None:
+			order = self.cart_manager.create_order(user.id)
+		return order
 

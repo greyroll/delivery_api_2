@@ -30,3 +30,11 @@ class InvalidPasswordException(AppBaseException):
     def __init__(self, message: str = "The password you entered is incorrect."):
         super().__init__(message, status_code=401)
 
+class TokenExpiredException(AppBaseException):
+    def __init__(self, message="Token has expired."):
+        super().__init__(message, status_code=401)
+
+class InvalidTokenException(AppBaseException):
+    def __init__(self, message="Token is invalid."):
+        super().__init__(message, status_code=401)
+

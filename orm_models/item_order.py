@@ -8,4 +8,9 @@ class ItemOrder(SQLModel, table=True):
     quantity: int
     price: float
 
+    item: "DeliveryItemORMModel" = Relationship(back_populates="orders", sa_relationship_kwargs={"lazy": "selectin"})
     order: "OrderORMModel" = Relationship(back_populates="items")
+
+    @property
+    def sum_price(self):
+        return self.quantity * self.price

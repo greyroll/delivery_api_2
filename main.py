@@ -7,14 +7,19 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import RedirectResponse
 
+from loguru import logger
+
 from classes.app_manager import AppManager
 from classes.custom_exceptions import AppBaseException
+from orm_models import OrderORMModel, UserORMModel
 
 app = FastAPI()
-# Mounting the static folder
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="templates")
+
+logger.add("logfile.log", level="DEBUG")
 
 load_dotenv()
 app_manager = AppManager()
@@ -36,13 +41,25 @@ async def app_exception_handler(request: Request, exc: AppBaseException):
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
+	added = request.query_params.get("added")
+	token = request.cookies.get("access_token")
+	context: dict = app_manager.get_auth_context(token)
+	logger.debug(context)
+	if context["is_logged_in"] == True:
+		order: OrderORMModel = app_manager.get_order_by_auth_context(context)
+		logger.debug(order.cart_count)
+	else:
+		order = None
 	menu: dict = app_manager.create_menu_for_index()
-	template_response = templates.TemplateResponse(request=request, name="index.html", context={"menu": menu})
+	template_response = templates.TemplateResponse(request=request, name="index.html", context={"menu": menu, "context": context, "order": order, "added": added})
 	return template_response
 
 @app.get("/account", response_class=HTMLResponse)
 async def account(request: Request):
-	template_response = templates.TemplateResponse(request=request, name="account.html")
+	token = request.cookies.get("access_token")
+	context: dict = app_manager.get_auth_context(token)
+	order: OrderORMModel = app_manager.get_order_by_auth_context(context)
+	template_response = templates.TemplateResponse(request=request, name="account.html", context={"context": context, "order": order})
 	return template_response
 
 # @app.get("/auth", response_class=HTMLResponse)
@@ -52,8 +69,33 @@ async def account(request: Request):
 
 @app.get("/cart", response_class=HTMLResponse)
 async def cart(request: Request):
-	template_response = templates.TemplateResponse(request=request, name="cart.html")
+	deleted = request.query_params.get("deleted")
+	token = request.cookies.get("access_token")
+	context: dict = app_manager.get_auth_context(token)
+	order: OrderORMModel = app_manager.get_order_by_auth_context(context)
+	template_response = templates.TemplateResponse(request=request, name="cart.html", context={"context": context, "order": order, "deleted": deleted})
 	return template_response
+
+@app.get("/addtocart/{item_id}")
+async def add_to_cart(item_id: int, request: Request):
+	token = request.cookies.get("access_token")
+	logger.debug(token)
+	if app_manager.get_auth_context(token)["is_logged_in"] == False:
+		return RedirectResponse(url="/login", status_code=302)
+	context: dict = app_manager.get_auth_context(token)
+	user_id = app_manager.user_manager.get_user_id_by_email(context["user_email"])
+	app_manager.cart_manager.add_to_cart(item_id, user_id)
+	return RedirectResponse(url="/?added=1", status_code=302)
+
+@app.get("/removefromcart/{item_id}")
+async def remove_from_cart(item_id: int, request: Request):
+	token = request.cookies.get("access_token")
+	if token is None:
+		return RedirectResponse(url="/login", status_code=302)
+	context: dict = app_manager.get_auth_context(token)
+	user_id = app_manager.user_manager.get_user_id_by_email(context["user_email"])
+	app_manager.cart_manager.remove_from_cart(item_id, user_id)
+	return RedirectResponse(url="/cart?deleted=1", status_code=302)
 
 @app.get("/login", response_class=HTMLResponse)
 async def login(request: Request):
@@ -73,6 +115,19 @@ async def process_login(email: str = Form(), password: str = Form()):
 		samesite="lax"
 	)
 	return response
+
+@app.get("/logout")
+async def logout(request: Request):
+	response = RedirectResponse(url="/", status_code=302)
+	response.delete_cookie(key="access_token")
+	return response
+
+
+@app.post("/order")
+async def order(request: Request, name: str = Form(), address: str = Form(), phone: str = Form()):
+	token = request.cookies.get("access_token")
+	context: dict = app_manager.get_auth_context(token)
+	user: UserORMModel = app_manager.user_manager.get_by_email(context["user_email"])
 
 @app.get("/ordered", response_class=HTMLResponse)
 async def ordered(request: Request):

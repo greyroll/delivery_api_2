@@ -1,7 +1,10 @@
 import os
 import jwt
 from datetime import datetime, timedelta
-from typing import Optional
+
+from loguru import logger
+
+
 
 class JWTManager:
     def __init__(self, algorithm: str = "HS256", expiration_minutes: int = 60):
@@ -17,22 +20,23 @@ class JWTManager:
         # Добавляем время истечения токена
         payload["exp"] = datetime.now() + timedelta(minutes=self.expiration_minutes)
         token = jwt.encode(payload, key=self.secret_key, algorithm=self.algorithm)
+        logger.debug(f"JWTManager.create_token: token created: {token}, user: {data['sub']}")
         return token
 
-    def verify_token(self, token: str) -> Optional[dict]:
+    def get_payload_or_none(self, token: str | None) -> dict | None:
         """
-        Декодирует и проверяет JWT-токен.
-        Возвращает полезную нагрузку, если токен корректен, или None в случае ошибки.
+        Проверяет JWT-токен и возвращает payload, если токен валиден.
+        Если токен невалиден или истёк — возвращает None.
+        Удобно для отображения элементов в шаблонах.
         """
+        if token is None:
+            logger.debug("JWTManager.get_payload_or_none: token is None")
+            return None
         try:
-            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
-            return payload
-        except jwt.ExpiredSignatureError:
-            # Здесь можно добавить дополнительную логику обработки истекшего токена
-            print("Token expired")
-        except jwt.InvalidTokenError:
-            # Обработка ошибки декодирования или неверного токена
-            print("Invalid token")
-        return None
+            return jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+        except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+            logger.debug("JWTManager.get_payload_or_none: token is invalid")
+            return None
+
 
 

@@ -2,6 +2,7 @@ from sqlmodel import Session, select
 from datetime import datetime
 
 from orm_managers import BaseORMManager
+from orm_models import DeliveryItemORMModel
 from orm_models.user import UserORMModel
 from orm_models.item_order import ItemOrder
 from orm_models.order import OrderORMModel
@@ -37,24 +38,18 @@ class CartOrderORMManager(BaseORMManager):
             return order
 
     def add_to_cart(self, item_id: int, user_id: int, quantity: int = 1):
-        with Session(self.engine, expire_on_commit=False) as session:
+        with Session(self.engine) as session:
             statement = select(OrderORMModel).where(
                 OrderORMModel.user_id == user_id,
                 OrderORMModel.status == "pending"
             )
             order = session.exec(statement).first()
 
-            if not order:
-                order = OrderORMModel(
-                    user_id=user_id,
-                    status="pending",
-                    created_at=datetime.now(),
-                    total=0.0,
-                    address=""
-                )
-                session.add(order)
-                session.commit()
-                session.refresh(order)
+            if order is None:
+                order = self.create_order(user_id)
+
+            statement = select(DeliveryItemORMModel).where(DeliveryItemORMModel.id == item_id)
+            item: DeliveryItemORMModel = session.exec(statement).first()
 
             statement = select(ItemOrder).where(
                 ItemOrder.order_id == order.id,
@@ -69,14 +64,20 @@ class CartOrderORMManager(BaseORMManager):
                     item_id=item_id,
                     order_id=order.id,
                     quantity=quantity,
-                    price=0.0  # возможно, стоит получать из таблицы delivery_item
+                    price=item.price  # возможно, стоит получать из таблицы delivery_item
                 )
                 session.add(item_order)
+                session.commit()
+                session.refresh(item_order)
 
+            total = sum(item.quantity * item.price for item in order.items)
+            order.total = total
+            session.add(order)
             session.commit()
+            session.refresh(order)
 
     def remove_from_cart(self, item_id: int, user_id: int, quantity: int = 1):
-        with Session(self.engine, expire_on_commit=False) as session:
+        with Session(self.engine) as session:
             statement = select(OrderORMModel).where(
                 OrderORMModel.user_id == user_id,
                 OrderORMModel.status == "pending"
@@ -98,10 +99,14 @@ class CartOrderORMManager(BaseORMManager):
                 else:
                     session.delete(item_order)
 
-                session.commit()
+            total = sum(item.quantity * item.price for item in order.items)
+            order.total = total
+            session.add(order)
+            session.commit()
+            session.refresh(order)
 
     def checkout(self, user_id: int):
-        with Session(self.engine, expire_on_commit=False) as session:
+        with Session(self.engine) as session:
             statement = select(OrderORMModel).where(
                 OrderORMModel.user_id == user_id,
                 OrderORMModel.status == "pending"
@@ -116,5 +121,8 @@ class CartOrderORMManager(BaseORMManager):
             order.status = "confirmed"
             order.created_at = datetime.now()
 
+            session.add(order)
             session.commit()
+            session.refresh(order)
             return order
+
