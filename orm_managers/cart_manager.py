@@ -1,6 +1,8 @@
 from sqlmodel import Session, select
 from datetime import datetime
 
+from classes.custom_exceptions import NoItemsInCartException
+from classes.order_status import OrderStatus
 from orm_managers import BaseORMManager
 from orm_models import DeliveryItemORMModel
 from orm_models.user import UserORMModel
@@ -19,7 +21,7 @@ class CartOrderORMManager(BaseORMManager):
         with Session(self.engine) as session:
             statement = select(OrderORMModel).where(
                 OrderORMModel.user_id == user_id,
-                OrderORMModel.status == "pending"
+                OrderORMModel.status == OrderStatus.PENDING
             )
             return session.exec(statement).first()
 
@@ -27,10 +29,9 @@ class CartOrderORMManager(BaseORMManager):
         with Session(self.engine) as session:
             order = OrderORMModel(
                 user_id=user_id,
-                status="pending",
+                status=OrderStatus.PENDING,
                 created_at=datetime.now(),
                 total=0.0,
-                address=""
             )
             session.add(order)
             session.commit()
@@ -41,7 +42,7 @@ class CartOrderORMManager(BaseORMManager):
         with Session(self.engine) as session:
             statement = select(OrderORMModel).where(
                 OrderORMModel.user_id == user_id,
-                OrderORMModel.status == "pending"
+                OrderORMModel.status == OrderStatus.PENDING
             )
             order = session.exec(statement).first()
 
@@ -70,8 +71,11 @@ class CartOrderORMManager(BaseORMManager):
                 session.commit()
                 session.refresh(item_order)
 
-            total = sum(item.quantity * item.price for item in order.items)
-            order.total = total
+            session.refresh(order)
+            if order.cart_count == 0:
+                order.total = 0.0
+            else:
+                order.total = sum(item.sum_price for item in order.items)
             session.add(order)
             session.commit()
             session.refresh(order)
@@ -80,7 +84,7 @@ class CartOrderORMManager(BaseORMManager):
         with Session(self.engine) as session:
             statement = select(OrderORMModel).where(
                 OrderORMModel.user_id == user_id,
-                OrderORMModel.status == "pending"
+                OrderORMModel.status == OrderStatus.PENDING
             )
             order = session.exec(statement).first()
 
@@ -99,26 +103,43 @@ class CartOrderORMManager(BaseORMManager):
                 else:
                     session.delete(item_order)
 
-            total = sum(item.quantity * item.price for item in order.items)
-            order.total = total
+            session.refresh(order)
+            if order.cart_count == 0:
+                order.total = 0.0
+            else:
+                order.total = sum(item.sum_price for item in order.items)
             session.add(order)
             session.commit()
             session.refresh(order)
 
-    def checkout(self, user_id: int):
+    def checkout(self, user_id: int, name: str | None = None, address: str | None = None, phone: str | None = None):
         with Session(self.engine) as session:
             statement = select(OrderORMModel).where(
                 OrderORMModel.user_id == user_id,
-                OrderORMModel.status == "pending"
+                OrderORMModel.status == OrderStatus.PENDING
             )
             order = session.exec(statement).first()
 
             if not order:
                 raise ValueError("No active order to checkout.")
 
-            total = sum(item.quantity * item.price for item in order.items)
-            order.total = total
-            order.status = "confirmed"
+            if order.cart_count == 0:
+                raise NoItemsInCartException("No items in cart. Please add items to checkout.")
+
+            if order.address != address:
+                order.address = address
+
+            if order.user.name != name:
+                order.user.name = name
+
+            if order.user.phone_number != phone:
+                order.user.phone_number = phone
+
+            session.add(order.user)
+            session.refresh(order.user)
+
+            order.total = sum(item.sum_price for item in order.items)
+            order.status = OrderStatus.CONFIRMED
             order.created_at = datetime.now()
 
             session.add(order)

@@ -20,13 +20,4 @@ class UserORMManager(BaseORMManager):
 		if user:
 			return user.id
 
-	def set_user_info(self, user_id: int, user_name, user_address, user_phone):
-		with Session(self.engine) as session:
-			user = session.get(self.model, user_id)
-			user.name = user_name
-			user.address = user_address
-			user.phone = user_phone
-			session.add(user)
-			session.commit()
-			session.refresh(user)
 

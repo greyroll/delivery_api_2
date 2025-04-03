@@ -16,7 +16,7 @@ class OrderORMModel(SQLModel, table=True):
 	address: str | None
 	total: float
 
-	user: UserORMModel = Relationship(back_populates="orders")
+	user: UserORMModel = Relationship(back_populates="orders", sa_relationship_kwargs={"lazy": "selectin"})
 	items: list[ItemOrder] = Relationship(back_populates="order", sa_relationship_kwargs={"lazy": "selectin"})
 
 	@property

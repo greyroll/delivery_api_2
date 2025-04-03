@@ -46,16 +46,15 @@ class AppManager:
 		payload = self.jwt_manager.get_payload_or_none(token)
 		return {
 			"is_logged_in": payload is not None,
-			"user_email": payload.get("sub") if payload else None
+			"user_id": int(payload.get("sub")) if payload else None
 		}
 
 	def get_order_by_auth_context(self, context: dict) -> OrderORMModel | None:
-		user_email = context.get("user_email")
-		user: UserORMModel = self.user_manager.get_by_email(user_email)
-		if user is None:
+		user_id = context.get("user_id")
+		if user_id is None:
 			raise UserNotFoundException()
-		order: OrderORMModel = self.cart_manager.get_active_order_by_user_id(user.id)
+		order: OrderORMModel = self.cart_manager.get_active_order_by_user_id(user_id)
 		if order is None:
-			order = self.cart_manager.create_order(user.id)
+			order = self.cart_manager.create_order(user_id)
 		return order
 

@@ -54,9 +54,11 @@ async def index(request: Request):
 	template_response = templates.TemplateResponse(request=request, name="index.html", context={"menu": menu, "context": context, "order": order, "added": added})
 	return template_response
 
+
 @app.get("/account", response_class=HTMLResponse)
 async def account(request: Request):
 	token = request.cookies.get("access_token")
+	logger.debug(token)
 	context: dict = app_manager.get_auth_context(token)
 	order: OrderORMModel = app_manager.get_order_by_auth_context(context)
 	template_response = templates.TemplateResponse(request=request, name="account.html", context={"context": context, "order": order})
@@ -71,8 +73,12 @@ async def account(request: Request):
 async def cart(request: Request):
 	deleted = request.query_params.get("deleted")
 	token = request.cookies.get("access_token")
-	context: dict = app_manager.get_auth_context(token)
-	order: OrderORMModel = app_manager.get_order_by_auth_context(context)
+	try:
+		context: dict = app_manager.get_auth_context(token)
+		order: OrderORMModel = app_manager.get_order_by_auth_context(context)
+	except AppBaseException:
+		context = {"is_logged_in": False}
+		order = None
 	template_response = templates.TemplateResponse(request=request, name="cart.html", context={"context": context, "order": order, "deleted": deleted})
 	return template_response
 
@@ -80,10 +86,10 @@ async def cart(request: Request):
 async def add_to_cart(item_id: int, request: Request):
 	token = request.cookies.get("access_token")
 	logger.debug(token)
-	if app_manager.get_auth_context(token)["is_logged_in"] == False:
+	if not app_manager.get_auth_context(token)["is_logged_in"]:
 		return RedirectResponse(url="/login", status_code=302)
 	context: dict = app_manager.get_auth_context(token)
-	user_id = app_manager.user_manager.get_user_id_by_email(context["user_email"])
+	user_id = context["user_id"]
 	app_manager.cart_manager.add_to_cart(item_id, user_id)
 	return RedirectResponse(url="/?added=1", status_code=302)
 
@@ -93,7 +99,7 @@ async def remove_from_cart(item_id: int, request: Request):
 	if token is None:
 		return RedirectResponse(url="/login", status_code=302)
 	context: dict = app_manager.get_auth_context(token)
-	user_id = app_manager.user_manager.get_user_id_by_email(context["user_email"])
+	user_id = context["user_id"]
 	app_manager.cart_manager.remove_from_cart(item_id, user_id)
 	return RedirectResponse(url="/cart?deleted=1", status_code=302)
 
@@ -104,10 +110,12 @@ async def login(request: Request):
 
 @app.post("/process_login")
 async def process_login(email: str = Form(), password: str = Form()):
-	if app_manager.validate_login(email, password) is False:
-		return HTMLResponse(status_code=401, content="Invalid credentials")
+	logger.debug(f"email: {email}, password: {password}")
+	app_manager.validate_login(email, password)
 
-	jwt_token = app_manager.jwt_manager.create_token(data={"sub": email})
+	user_id = app_manager.user_manager.get_user_id_by_email(email)
+	jwt_token = app_manager.jwt_manager.create_token(user_id)
+
 	response = RedirectResponse(url="/account", status_code=302)
 	response.set_cookie(
 		key="access_token",
@@ -127,7 +135,11 @@ async def logout(request: Request):
 async def order(request: Request, name: str = Form(), address: str = Form(), phone: str = Form()):
 	token = request.cookies.get("access_token")
 	context: dict = app_manager.get_auth_context(token)
-	user: UserORMModel = app_manager.user_manager.get_by_email(context["user_email"])
+	user_id = context["user_id"]
+	# app_manager.user_manager.set_user_info(user_id, name, address, phone)
+	app_manager.cart_manager.checkout(user_id)
+	response = RedirectResponse(url="/ordered", status_code=302)
+	return response
 
 @app.get("/ordered", response_class=HTMLResponse)
 async def ordered(request: Request):
@@ -142,7 +154,8 @@ async def register(request: Request):
 @app.post("/process_register")
 async def register(email: str = Form(), password: str = Form()):
 	app_manager.register_user(email, password)
-	jwt_token = app_manager.jwt_manager.create_token(data={"sub": email})
+	user_id = app_manager.user_manager.get_user_id_by_email(email)
+	jwt_token = app_manager.jwt_manager.create_token(user_id)
 	response = RedirectResponse(url="/account", status_code=302)
 	response.set_cookie(
 		key="access_token",

@@ -1,6 +1,6 @@
 import os
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from loguru import logger
 
@@ -12,15 +12,16 @@ class JWTManager:
         self.algorithm = algorithm
         self.expiration_minutes = expiration_minutes
 
-    def create_token(self, data: dict) -> str:
+    def create_token(self, user_id: int) -> str:
         """
         Создает JWT-токен с полезной нагрузкой data и устанавливает время истечения.
         """
-        payload = data.copy()
+        payload = {"sub": str(user_id)}
         # Добавляем время истечения токена
-        payload["exp"] = datetime.now() + timedelta(minutes=self.expiration_minutes)
+        expire_time = datetime.now(timezone.utc) + timedelta(minutes=self.expiration_minutes)
+        payload["exp"] = int(expire_time.timestamp())
         token = jwt.encode(payload, key=self.secret_key, algorithm=self.algorithm)
-        logger.debug(f"JWTManager.create_token: token created: {token}, user: {data['sub']}")
+        logger.debug(f"JWTManager.create_token: token created: {token}, user: {payload['sub']}")
         return token
 
     def get_payload_or_none(self, token: str | None) -> dict | None:
