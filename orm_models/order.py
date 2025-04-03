@@ -23,6 +23,6 @@ class OrderORMModel(SQLModel, table=True):
 	def cart_count(self):
 		return len(self.items)
 
-	@property
-	def total(self) -> float:
-		return sum(item.quantity * item.price for item in self.items)
+	# @property
+	# def total(self) -> float:
+	# 	return sum(item.quantity * item.price for item in self.items)

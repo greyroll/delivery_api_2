@@ -136,8 +136,7 @@ async def order(request: Request, name: str = Form(), address: str = Form(), pho
 	token = request.cookies.get("access_token")
 	context: dict = app_manager.get_auth_context(token)
 	user_id = context["user_id"]
-	# app_manager.user_manager.set_user_info(user_id, name, address, phone)
-	app_manager.cart_manager.checkout(user_id)
+	app_manager.cart_manager.checkout(user_id, name, address, phone)
 	response = RedirectResponse(url="/ordered", status_code=302)
 	return response
 

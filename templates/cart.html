@@ -28,12 +28,12 @@
 
           <div class="mt-3 mb-3">
             <label for="name">Адрес</label>
-            <input type="text" id="address" name="address" class="font-weight-bold form-control" value="{{ order.address if order.address else '' }}">
+            <input type="text" id="address" name="address" class="font-weight-bold form-control">
           </div>
 
           <div class="mt-3 mb-3">
             <label for="name">Телефон</label>
-            <input type="text" id="phone" name="phone" class="font-weight-bold form-control" value="{{ order.user.phone if order.user.phone else '' }}">
+            <input type="text" id="phone" name="phone" class="font-weight-bold form-control" value="{{ order.user.phone_number if order.user.phone_number else '' }}">
           </div>
 
          <input type="hidden" value = "{{ order.total }}" name="order_summ">

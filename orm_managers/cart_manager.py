@@ -126,9 +126,6 @@ class CartOrderORMManager(BaseORMManager):
             if order.cart_count == 0:
                 raise NoItemsInCartException("No items in cart. Please add items to checkout.")
 
-            if order.address != address:
-                order.address = address
-
             if order.user.name != name:
                 order.user.name = name
 
@@ -136,8 +133,11 @@ class CartOrderORMManager(BaseORMManager):
                 order.user.phone_number = phone
 
             session.add(order.user)
+            session.flush()
             session.refresh(order.user)
 
+            if order.address != address:
+                order.address = address
             order.total = sum(item.sum_price for item in order.items)
             order.status = OrderStatus.CONFIRMED
             order.created_at = datetime.now()
