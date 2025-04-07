@@ -6,7 +6,6 @@ class AppBaseException(Exception):
         self.message = message
         self.status_code = status_code
         super().__init__(message)
-        logger.error(f"status_code: {self.status_code}, message: {self.message}")
 
 class OrphanOrderException(AppBaseException):
     def __init__(self, message: str = "Order has no associated user."):

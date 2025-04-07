@@ -28,7 +28,6 @@ class JWTManager:
         """
         Проверяет JWT-токен и возвращает payload, если токен валиден.
         Если токен невалиден или истёк — возвращает None.
-        Удобно для отображения элементов в шаблонах.
         """
         if token is None:
             logger.debug("JWTManager.get_payload_or_none: token is None")

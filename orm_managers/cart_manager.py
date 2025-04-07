@@ -5,7 +5,6 @@ from classes.custom_exceptions import NoItemsInCartException
 from classes.order_status import OrderStatus
 from orm_managers import BaseORMManager
 from orm_models import DeliveryItemORMModel
-from orm_models.user import UserORMModel
 from orm_models.item_order import ItemOrder
 from orm_models.order import OrderORMModel
 
@@ -112,7 +111,7 @@ class CartOrderORMManager(BaseORMManager):
             session.commit()
             session.refresh(order)
 
-    def checkout(self, user_id: int, name: str | None = None, address: str | None = None, phone: str | None = None):
+    def checkout(self, user_id: int, name: str | None = None, address: str | None = None, phone: str | None = None) -> OrderORMModel:
         with Session(self.engine) as session:
             statement = select(OrderORMModel).where(
                 OrderORMModel.user_id == user_id,

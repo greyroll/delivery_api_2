@@ -64,10 +64,6 @@ async def account(request: Request):
 	template_response = templates.TemplateResponse(request=request, name="account.html", context={"context": context, "order": order})
 	return template_response
 
-# @app.get("/auth", response_class=HTMLResponse)
-# async def auth(request: Request):
-# 	template_response = templates.TemplateResponse(request=request, name="auth.html")
-# 	return template_response
 
 @app.get("/cart", response_class=HTMLResponse)
 async def cart(request: Request):
