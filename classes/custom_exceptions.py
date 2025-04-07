@@ -53,5 +53,9 @@ class InvalidTokenException(AppBaseException):
         super().__init__(message, status_code=401)
         logger.error(f"status_code: {self.status_code}, message: {self.message}")
 
+class NoOrderHistoryException(AppBaseException):
+    def __init__(self, message="User has no confirmed orders"):
+        super().__init__(message)
+
 
 

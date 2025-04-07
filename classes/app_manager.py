@@ -4,14 +4,14 @@ from classes.custom_exceptions import UserAlreadyExistsException, UserNotFoundEx
 	InvalidPasswordException
 from classes.jwt_manager import JWTManager
 from classes.password_manager import PasswordManager
-from orm_managers import UserORMManager, CartOrderORMManager, DeliveryItemORMManager
+from orm_managers import UserORMManager, OrderORMManager, DeliveryItemORMManager
 from orm_models import DeliveryItemORMModel, UserORMModel, OrderORMModel
 
 
 class AppManager:
 	def __init__(self):
 		self.user_manager = UserORMManager()
-		self.cart_manager = CartOrderORMManager()
+		self.order_manager = OrderORMManager()
 		self.items_manager = DeliveryItemORMManager()
 		self.password_manager = PasswordManager()
 		self.jwt_manager = JWTManager()
@@ -53,8 +53,12 @@ class AppManager:
 		user_id = context.get("user_id")
 		if user_id is None:
 			raise UserNotFoundException()
-		order: OrderORMModel = self.cart_manager.get_active_order_by_user_id(user_id)
+		order: OrderORMModel = self.order_manager.get_active_order_by_user_id(user_id)
 		if order is None:
-			order = self.cart_manager.create_order(user_id)
+			order = self.order_manager.create_order(user_id)
 		return order
+
+	def get_order_history(self, user_id: int, limit: int = 3):
+		orders_history = self.order_manager.get_order_history(user_id)
+		return orders_history[:limit]
 

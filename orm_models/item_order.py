@@ -12,5 +12,5 @@ class ItemOrder(SQLModel, table=True):
     order: "OrderORMModel" = Relationship(back_populates="items")
 
     @property
-    def sum_price(self):
+    def sum_price(self) -> float:
         return self.quantity * self.price

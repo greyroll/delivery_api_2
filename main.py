@@ -10,7 +10,7 @@ from starlette.responses import RedirectResponse
 from loguru import logger
 
 from classes.app_manager import AppManager
-from classes.custom_exceptions import AppBaseException
+from classes.custom_exceptions import AppBaseException, NoOrderHistoryException
 from orm_models import OrderORMModel, UserORMModel
 
 app = FastAPI()
@@ -61,7 +61,13 @@ async def account(request: Request):
 	logger.debug(token)
 	context: dict = app_manager.get_auth_context(token)
 	order: OrderORMModel = app_manager.get_order_by_auth_context(context)
-	template_response = templates.TemplateResponse(request=request, name="account.html", context={"context": context, "order": order})
+	try:
+		order_history: list[OrderORMModel] = app_manager.get_order_history(context["user_id"])
+		no_orders = False
+	except NoOrderHistoryException:
+		order_history = []
+		no_orders = True
+	template_response = templates.TemplateResponse(request=request, name="account.html", context={"context": context, "order": order, "orders": order_history, "no_orders": no_orders})
 	return template_response
 
 
@@ -86,7 +92,7 @@ async def add_to_cart(item_id: int, request: Request):
 		return RedirectResponse(url="/login", status_code=302)
 	context: dict = app_manager.get_auth_context(token)
 	user_id = context["user_id"]
-	app_manager.cart_manager.add_to_cart(item_id, user_id)
+	app_manager.order_manager.add_to_cart(item_id, user_id)
 	return RedirectResponse(url="/?added=1", status_code=302)
 
 @app.get("/removefromcart/{item_id}")
@@ -96,7 +102,7 @@ async def remove_from_cart(item_id: int, request: Request):
 		return RedirectResponse(url="/login", status_code=302)
 	context: dict = app_manager.get_auth_context(token)
 	user_id = context["user_id"]
-	app_manager.cart_manager.remove_from_cart(item_id, user_id)
+	app_manager.order_manager.remove_from_cart(item_id, user_id)
 	return RedirectResponse(url="/cart?deleted=1", status_code=302)
 
 @app.get("/login", response_class=HTMLResponse)
@@ -132,7 +138,7 @@ async def order(request: Request, name: str = Form(), address: str = Form(), pho
 	token = request.cookies.get("access_token")
 	context: dict = app_manager.get_auth_context(token)
 	user_id = context["user_id"]
-	app_manager.cart_manager.checkout(user_id, name, address, phone)
+	app_manager.order_manager.checkout(user_id, name, address, phone)
 	response = RedirectResponse(url="/ordered", status_code=302)
 	return response
 

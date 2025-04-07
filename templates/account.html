@@ -8,59 +8,35 @@
       <div class="col-12 col-lg-8">
         <h1 class="h3 my-5">Личный кабинет. Заказы</h1>
 
-        <div class="card">
-          <ul class="list-group list-group-flush">
-            <li class="list-group-item">
-              <div class="row">
-                <div class="col-7 col-lg-9">
-                  <span class="h5 font-weight-bold">25 Февраля</span> <!--  -->
-                  <span class="h5">- 1240 P</span>
+        {% if no_orders %}
+          <div class="alert alert-info mt-3">У вас пока нет заказов. Загляните в <a href="/">меню</a> и выберите что-нибудь вкусное 🍕</div>
+        {% endif %}
+
+        {% if not no_orders %}
+        {% for order in orders %}
+          <div class="card mt-4">
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item">
+                <div class="row">
+                  <div class="col-7 col-lg-9">
+                    <span class="h5 font-weight-bold">{{ order.created_at.strftime('%d %B') }}</span>
+                    <span class="h5">- {{ order.total }} ₽</span>
+                  </div>
+                </div>
+              </li>
+              <div class="card-body">
+                <div class="row">
+                  {% for item_order in order.items %}
+                    <p class="col-6 text-muted">{{ item_order.item.title }}</p>
+                    <p class="col-3 text-muted text-center">{{ item_order.quantity }}</p>
+                    <p class="col-3 text-muted text-right">{{ item_order.sum_price }} ₽</p>
+                  {% endfor %}
                 </div>
               </div>
-            </li>
-
-            <div class="card-body">
-              <div class="row">
-                <p class="col-4 text-muted">Ролл "Хомский" </p>
-                <p class="col-2 text-muted"> 1</p>
-                <p class="col-6 text-muted"> 310 </p>
-                <p class="col-4 text-muted">Бургер 404 </p>
-                <p class="col-2 text-muted"> 1</p>
-                <p class="col-6 text-muted"> 420 </p>
-                <p class="col-4 text-muted">Пицца "Армин" </p>
-                <p class="col-2 text-muted"> 1</p>
-                <p class="col-6 text-muted"> 350 </p>
-              </div>
-            </div>
-          </ul>
-        </div>
-
-        <div class="mt-4 card">
-          <ul class="list-group list-group-flush">
-            <li class="list-group-item">
-              <div class="row">
-                <div class="col-7 col-lg-9">
-                  <span class="h5 font-weight-bold">11 Февраля</span>
-                  <span class="h5">- 875 P</span>
-                </div>
-              </div>
-            </li>
-
-            <div class="card-body">
-              <div class="row">
-                <p class="col-4 text-muted">Ролл "Хомский" </p>
-                <p class="col-2 text-muted"> 1</p>
-                <p class="col-6 text-muted"> 315 </p>
-                <p class="col-4 text-muted">Бургер 404 </p>
-                <p class="col-2 text-muted"> 1</p>
-                <p class="col-6 text-muted"> 250 </p>
-                <p class="col-4 text-muted">Пицца "Армин" </p>
-                <p class="col-2 text-muted"> 1</p>
-                <p class="col-6 text-muted"> 310 </p>
-              </div>
-            </div>
-          </ul>
-        </div>
+            </ul>
+          </div>
+        {% endfor %}
+        {% endif %}
 
       </div>
     </section>

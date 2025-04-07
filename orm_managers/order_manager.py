@@ -1,7 +1,7 @@
 from sqlmodel import Session, select
 from datetime import datetime
 
-from classes.custom_exceptions import NoItemsInCartException
+from classes.custom_exceptions import NoItemsInCartException, NoOrderHistoryException
 from classes.order_status import OrderStatus
 from orm_managers import BaseORMManager
 from orm_models import DeliveryItemORMModel
@@ -9,7 +9,7 @@ from orm_models.item_order import ItemOrder
 from orm_models.order import OrderORMModel
 
 
-class CartOrderORMManager(BaseORMManager):
+class OrderORMManager(BaseORMManager):
     model = OrderORMModel
 
     def has_active_order(self, user_id: int) -> bool:
@@ -146,3 +146,13 @@ class CartOrderORMManager(BaseORMManager):
             session.refresh(order)
             return order
 
+    def get_order_history(self, user_id: int) -> list[OrderORMModel]:
+        with Session(self.engine) as session:
+            statement = select(OrderORMModel).where(
+                OrderORMModel.user_id == user_id,
+                OrderORMModel.status == OrderStatus.CONFIRMED
+            )
+            orders = session.exec(statement).all()
+            if not orders:
+                raise NoOrderHistoryException()
+            return orders
