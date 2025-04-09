@@ -5,7 +5,7 @@ from classes.custom_exceptions import UserAlreadyExistsException, UserNotFoundEx
 from classes.jwt_manager import JWTManager
 from classes.password_manager import PasswordManager
 from orm_managers import UserORMManager, OrderORMManager, DeliveryItemORMManager
-from orm_models import DeliveryItemORMModel, UserORMModel, OrderORMModel
+from orm_models import DeliveryItemORMModel, UserORMModel
 from pydantic_models.order_dto import OrderDTO
 
 
