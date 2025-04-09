@@ -9,5 +9,6 @@ class UserORMModel(SQLModel, table=True):
     email: str
     phone_number: str | None
     password: str
+    last_address: str | None
 
     orders: list['OrderORMModel'] = Relationship(back_populates="user")

@@ -59,7 +59,7 @@ class AppManager:
 			order = self.order_manager.create_order(user_id)
 		return order
 
-	def get_order_history(self, user_id: int, limit: int = 3):
+	def get_order_history(self, user_id: int, limit: int = 3) -> list[OrderDTO]:
 		orders_history = self.order_manager.get_order_history(user_id)
 		return orders_history[:limit]
 

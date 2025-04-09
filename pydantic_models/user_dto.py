@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class UserDTO(BaseModel):
@@ -8,6 +8,7 @@ class UserDTO(BaseModel):
 	email: str
 	phone_number: str | None
 	password: str
+	last_address: str | None
 
 	class Config:
 		from_attributes = True

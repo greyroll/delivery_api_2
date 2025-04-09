@@ -20,4 +20,3 @@ class UserORMManager(BaseORMManager):
 		if user:
 			return user.id
 
-

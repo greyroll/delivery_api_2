@@ -2,8 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from pydantic_models.item_order_dto import ItemOrderDTO
-from pydantic_models.user_dto import UserDTO
+from pydantic_models import ItemOrderDTO, UserDTO
 
 
 class OrderDTO(BaseModel):

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, computed_field
 
-from pydantic_models.item_dto import ItemDTO
+from pydantic_models import ItemDTO
 
 
 class ItemOrderDTO(BaseModel):
