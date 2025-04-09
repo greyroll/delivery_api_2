@@ -1,7 +1,7 @@
 import uvicorn
 from dotenv import load_dotenv
 
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request, Form, Depends
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -12,6 +12,7 @@ from loguru import logger
 from classes.app_manager import AppManager
 from classes.custom_exceptions import AppBaseException, NoOrderHistoryException
 from pydantic_models import OrderDTO
+from pydantic_models.user_login_dto import UserLoginDTO
 
 app = FastAPI()
 
@@ -111,11 +112,11 @@ async def login(request: Request):
 	return template_response
 
 @app.post("/process_login")
-async def process_login(email: str = Form(), password: str = Form()):
-	logger.debug(f"email: {email}, password: {password}")
-	app_manager.validate_login(email, password)
+async def process_login(user_login: UserLoginDTO = Depends(UserLoginDTO.as_form)):
+	logger.debug(f"email: {user_login.email}, password: {user_login.password}")
+	app_manager.validate_login(user_login.email, user_login.password)
 
-	user_id = app_manager.user_manager.get_user_id_by_email(email)
+	user_id = app_manager.user_manager.get_user_id_by_email(user_login.email)
 	jwt_token = app_manager.jwt_manager.create_token(user_id)
 
 	response = RedirectResponse(url="/account", status_code=302)
@@ -127,7 +128,7 @@ async def process_login(email: str = Form(), password: str = Form()):
 	return response
 
 @app.get("/logout")
-async def logout(request: Request):
+async def logout():
 	response = RedirectResponse(url="/", status_code=302)
 	response.delete_cookie(key="access_token")
 	return response
@@ -153,9 +154,9 @@ async def register(request: Request):
 	return template_response
 
 @app.post("/process_register")
-async def register(email: str = Form(), password: str = Form()):
-	app_manager.register_user(email, password)
-	user_id = app_manager.user_manager.get_user_id_by_email(email)
+async def register(user_login: UserLoginDTO = Depends(UserLoginDTO.as_form)):
+	app_manager.register_user(user_login.email, user_login.password)
+	user_id = app_manager.user_manager.get_user_id_by_email(user_login.email)
 	jwt_token = app_manager.jwt_manager.create_token(user_id)
 	response = RedirectResponse(url="/account", status_code=302)
 	response.set_cookie(
