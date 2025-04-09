@@ -12,6 +12,7 @@ from loguru import logger
 from classes.app_manager import AppManager
 from classes.custom_exceptions import AppBaseException, NoOrderHistoryException
 from orm_models import OrderORMModel, UserORMModel
+from pydantic_models.order_dto import OrderDTO
 
 app = FastAPI()
 
@@ -46,7 +47,7 @@ async def index(request: Request):
 	context: dict = app_manager.get_auth_context(token)
 	logger.debug(context)
 	if context["is_logged_in"] == True:
-		order: OrderORMModel = app_manager.get_order_by_auth_context(context)
+		order: OrderDTO = app_manager.get_order_by_auth_context(context)
 		logger.debug(order.cart_count)
 	else:
 		order = None
@@ -60,7 +61,7 @@ async def account(request: Request):
 	token = request.cookies.get("access_token")
 	logger.debug(token)
 	context: dict = app_manager.get_auth_context(token)
-	order: OrderORMModel = app_manager.get_order_by_auth_context(context)
+	order: OrderDTO = app_manager.get_order_by_auth_context(context)
 	try:
 		order_history: list[OrderORMModel] = app_manager.get_order_history(context["user_id"])
 		no_orders = False

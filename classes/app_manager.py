@@ -6,6 +6,7 @@ from classes.jwt_manager import JWTManager
 from classes.password_manager import PasswordManager
 from orm_managers import UserORMManager, OrderORMManager, DeliveryItemORMManager
 from orm_models import DeliveryItemORMModel, UserORMModel, OrderORMModel
+from pydantic_models.order_dto import OrderDTO
 
 
 class AppManager:
@@ -49,11 +50,11 @@ class AppManager:
 			"user_id": int(payload.get("sub")) if payload else None
 		}
 
-	def get_order_by_auth_context(self, context: dict) -> OrderORMModel | None:
+	def get_order_by_auth_context(self, context: dict) -> OrderDTO | None:
 		user_id = context.get("user_id")
 		if user_id is None:
 			raise UserNotFoundException()
-		order: OrderORMModel = self.order_manager.get_active_order_by_user_id(user_id)
+		order: OrderDTO = self.order_manager.get_active_order_by_user_id(user_id)
 		if order is None:
 			order = self.order_manager.create_order(user_id)
 		return order

@@ -1,4 +1,5 @@
-from sqlmodel import Session, select
+from sqlalchemy.orm import selectinload
+from sqlmodel import Session, select, desc
 from datetime import datetime
 
 from classes.custom_exceptions import NoItemsInCartException, NoOrderHistoryException
@@ -7,55 +8,70 @@ from orm_managers import BaseORMManager
 from orm_models import DeliveryItemORMModel
 from orm_models.item_order import ItemOrder
 from orm_models.order import OrderORMModel
+from pydantic_models.order_dto import OrderDTO
 
 
 class OrderORMManager(BaseORMManager):
     model = OrderORMModel
 
+
     def has_active_order(self, user_id: int) -> bool:
             result = self.get_active_order_by_user_id(user_id)
             return result is not None
 
-    def get_active_order_by_user_id(self, user_id: int) -> OrderORMModel | None:
-        with Session(self.engine) as session:
-            statement = select(OrderORMModel).where(
-                OrderORMModel.user_id == user_id,
-                OrderORMModel.status == OrderStatus.PENDING
-            )
-            return session.exec(statement).first()
+    def _get_active_order_by_user_id(self, session: Session, user_id: int) -> OrderORMModel | None:
+        statement = select(OrderORMModel).where(
+            OrderORMModel.user_id == user_id,
+            OrderORMModel.status == OrderStatus.PENDING
+        ).options(selectinload(OrderORMModel.items).options(selectinload(ItemOrder.item)))
+        return session.exec(statement).first()
 
-    def create_order(self, user_id: int) -> OrderORMModel:
-        with Session(self.engine) as session:
-            order = OrderORMModel(
-                user_id=user_id,
-                status=OrderStatus.PENDING,
-                created_at=datetime.now(),
-                total=0.0,
-            )
-            session.add(order)
-            session.commit()
-            session.refresh(order)
-            return order
+    def get_active_order_by_user_id(self, user_id: int) -> OrderDTO | None:
+        with self.session_scope() as session:
+            order = self._get_active_order_by_user_id(session, user_id)
+            return OrderDTO.model_validate(order) if order else None
+
+    def _create_order(self, session: Session, user_id: int) -> OrderORMModel:
+        order = OrderORMModel(
+            user_id=user_id,
+            status=OrderStatus.PENDING,
+            created_at=datetime.now(),
+            total=0.0,
+        )
+        session.add(order)
+        session.commit()
+        session.refresh(order)
+        return order
+
+    def create_order(self, user_id: int) -> OrderDTO:
+        with self.session_scope() as session:
+            order = self._create_order(session, user_id)
+            return OrderDTO.model_validate(order)
+
+    def _get_delivery_item_by_id(self, session: Session, item_id: int) -> DeliveryItemORMModel | None:
+        statement = select(DeliveryItemORMModel).where(DeliveryItemORMModel.id == item_id)
+        return session.exec(statement).first()
+
+    def _get_item_order(self, session: Session, order_id: int, item_id: int) -> ItemOrder | None:
+        statement = select(ItemOrder).where(
+            ItemOrder.order_id == order_id,
+            ItemOrder.item_id == item_id
+        )
+        return session.exec(statement).first()
+
+    def _update_order_total(self, order: OrderORMModel) -> OrderORMModel:
+        order.total = sum(item.sum_price for item in order.items)
+        return order
 
     def add_to_cart(self, item_id: int, user_id: int, quantity: int = 1):
-        with Session(self.engine) as session:
-            statement = select(OrderORMModel).where(
-                OrderORMModel.user_id == user_id,
-                OrderORMModel.status == OrderStatus.PENDING
-            )
-            order = session.exec(statement).first()
+        with self.session_scope() as session:
+            order = self._get_active_order_by_user_id(session, user_id)
 
             if order is None:
-                order = self.create_order(user_id)
+                order = self._create_order(session, user_id)
 
-            statement = select(DeliveryItemORMModel).where(DeliveryItemORMModel.id == item_id)
-            item: DeliveryItemORMModel = session.exec(statement).first()
-
-            statement = select(ItemOrder).where(
-                ItemOrder.order_id == order.id,
-                ItemOrder.item_id == item_id
-            )
-            item_order = session.exec(statement).first()
+            item = self._get_delivery_item_by_id(session, item_id)
+            item_order = self._get_item_order(session, order.id, item_id)
 
             if item_order:
                 item_order.quantity += quantity
@@ -64,37 +80,26 @@ class OrderORMManager(BaseORMManager):
                     item_id=item_id,
                     order_id=order.id,
                     quantity=quantity,
-                    price=item.price  # возможно, стоит получать из таблицы delivery_item
+                    price=item.price
                 )
                 session.add(item_order)
                 session.commit()
                 session.refresh(item_order)
 
             session.refresh(order)
-            if order.cart_count == 0:
-                order.total = 0.0
-            else:
-                order.total = sum(item.sum_price for item in order.items)
+            order = self._update_order_total(order)
             session.add(order)
             session.commit()
             session.refresh(order)
 
     def remove_from_cart(self, item_id: int, user_id: int, quantity: int = 1):
-        with Session(self.engine) as session:
-            statement = select(OrderORMModel).where(
-                OrderORMModel.user_id == user_id,
-                OrderORMModel.status == OrderStatus.PENDING
-            )
-            order = session.exec(statement).first()
+        with self.session_scope() as session:
+            order = self._get_active_order_by_user_id(session, user_id)
 
             if not order:
                 return
 
-            statement = select(ItemOrder).where(
-                ItemOrder.order_id == order.id,
-                ItemOrder.item_id == item_id
-            )
-            item_order = session.exec(statement).first()
+            item_order = self._get_item_order(session, order.id, item_id)
 
             if item_order:
                 if item_order.quantity > quantity:
@@ -103,21 +108,15 @@ class OrderORMManager(BaseORMManager):
                     session.delete(item_order)
 
             session.refresh(order)
-            if order.cart_count == 0:
-                order.total = 0.0
-            else:
-                order.total = sum(item.sum_price for item in order.items)
+            order = self._update_order_total(order)
             session.add(order)
             session.commit()
             session.refresh(order)
 
     def checkout(self, user_id: int, name: str | None = None, address: str | None = None, phone: str | None = None) -> OrderORMModel:
-        with Session(self.engine) as session:
-            statement = select(OrderORMModel).where(
-                OrderORMModel.user_id == user_id,
-                OrderORMModel.status == OrderStatus.PENDING
-            )
-            order = session.exec(statement).first()
+        with self.session_scope() as session:
+
+            order = self._get_active_order_by_user_id(session, user_id)
 
             if not order:
                 raise ValueError("No active order to checkout.")
@@ -146,13 +145,18 @@ class OrderORMManager(BaseORMManager):
             session.refresh(order)
             return order
 
-    def get_order_history(self, user_id: int) -> list[OrderORMModel]:
-        with Session(self.engine) as session:
-            statement = select(OrderORMModel).where(
+    def _get_confirmed_orders(self, session: Session, user_id: int) -> list[OrderORMModel]:
+        statement = select(OrderORMModel).where(
                 OrderORMModel.user_id == user_id,
                 OrderORMModel.status == OrderStatus.CONFIRMED
             )
-            orders = session.exec(statement).all()
+        return list(session.exec(statement).all())
+
+    def get_order_history(self, user_id: int) -> list[OrderDTO]:
+        with self.session_scope() as session:
+            orders = self._get_confirmed_orders(session, user_id)
+            orders.reverse()
             if not orders:
                 raise NoOrderHistoryException()
-            return orders
+
+            return [OrderDTO.model_validate(order) for order in orders]

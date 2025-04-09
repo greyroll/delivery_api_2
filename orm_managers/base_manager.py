@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from pathlib import Path
 
 from sqlmodel import SQLModel, create_engine, Session
@@ -11,23 +12,35 @@ class BaseORMManager:
 
 		self.engine = create_engine(f"sqlite:///{db_path}")
 
+	@contextmanager
+	def session_scope(self):
+		session = Session(self.engine)
+		try:
+			yield session
+			session.commit()
+		except Exception:
+			session.rollback()
+			raise
+		finally:
+			session.close()
+
 	def create_all_tables(self):
 		SQLModel.metadata.create_all(self.engine)
 
 	def add(self, obj: SQLModel):
-		with Session(self.engine) as session:
+		with self.session_scope() as session:
 			session.add(obj)
 			session.commit()
 			session.refresh(obj)
 
 	def add_all(self, objs: list[SQLModel]):
-		with Session(self.engine) as session:
+		with self.session_scope() as session:
 			session.add_all(objs)
 			session.commit()
 			session.refresh(objs)
 
 	def delete(self, obj_id: int):
-		with Session(self.engine) as session:
+		with self.session_scope() as session:
 			obj = session.get(self.model, obj_id)
 			session.delete(obj)
 			session.commit()
