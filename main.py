@@ -6,13 +6,11 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import RedirectResponse
-
 from loguru import logger
 
 from classes.app_manager import AppManager
 from classes.custom_exceptions import AppBaseException, NoOrderHistoryException
-from pydantic_models import OrderDTO
-from pydantic_models.user_login_dto import UserLoginDTO
+from pydantic_models import OrderDTO, UserLoginDTO
 
 app = FastAPI()
 
