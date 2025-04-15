@@ -3,6 +3,8 @@ from pathlib import Path
 
 from sqlmodel import SQLModel, create_engine, Session
 
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
 class BaseORMManager:
 	model: SQLModel | None = None
 

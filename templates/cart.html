@@ -23,17 +23,17 @@
 
           <div class="mt-3 mb-3">
             <label for="name">Ваше имя</label>
-            <input type="text" id="name" name="name" class="font-weight-bold form-control" value="{{ order.user.name if order.user.name else '' }}">
+            <input type="text" id="name" name="name" class="font-weight-bold form-control" value="{{ user.name if user.name else '' }}">
           </div>
 
           <div class="mt-3 mb-3">
             <label for="name">Адрес</label>
-            <input type="text" id="address" name="address" class="font-weight-bold form-control">
+            <input type="text" id="address" name="address" class="font-weight-bold form-control" value="{{ user.last_address if user.last_address else '' }}">
           </div>
 
           <div class="mt-3 mb-3">
             <label for="name">Телефон</label>
-            <input type="text" id="phone" name="phone" class="font-weight-bold form-control" value="{{ order.user.phone_number if order.user.phone_number else '' }}">
+            <input type="text" id="phone" name="phone" class="font-weight-bold form-control" value="{{ user.phone_number if user.phone_number else '' }}">
           </div>
 
          <input type="hidden" value = "{{ order.total }}" name="order_summ">

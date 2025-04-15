@@ -10,7 +10,7 @@ from loguru import logger
 
 from classes.app_manager import AppManager
 from classes.custom_exceptions import AppBaseException, NoOrderHistoryException
-from pydantic_models import OrderDTO, UserLoginDTO
+from pydantic_models import OrderDTO, UserLoginDTO, UserDTO
 
 app = FastAPI()
 
@@ -76,11 +76,14 @@ async def cart(request: Request):
 	token = request.cookies.get("access_token")
 	try:
 		context: dict = app_manager.get_auth_context(token)
-		order: OrderDTO = app_manager.get_order_by_auth_context(context)
+		order: OrderDTO | None = app_manager.get_order_by_auth_context(context)
+		user: UserDTO | None = app_manager.user_manager.get_by_id(context["user_id"])
+		logger.debug(user)
 	except AppBaseException:
 		context = {"is_logged_in": False}
 		order = None
-	template_response = templates.TemplateResponse(request=request, name="cart.html", context={"context": context, "order": order, "deleted": deleted})
+		user = None
+	template_response = templates.TemplateResponse(request=request, name="cart.html", context={"context": context, "order": order, "deleted": deleted, "user": user})
 	return template_response
 
 @app.get("/addtocart/{item_id}")
@@ -134,6 +137,8 @@ async def logout():
 
 @app.post("/order")
 async def order(request: Request, name: str = Form(), address: str = Form(), phone: str = Form()):
+	if name == "" or address == "" or phone == "":
+		return RedirectResponse(url="/cart", status_code=302)
 	token = request.cookies.get("access_token")
 	context: dict = app_manager.get_auth_context(token)
 	user_id = context["user_id"]

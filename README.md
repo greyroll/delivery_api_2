@@ -49,7 +49,7 @@ source venv/bin/activate  # или venv\Scripts\activate для Windows
 pip install -r requirements.txt
 ```
 
-4. **Создай .env файл (если используется)**
+4. **Создай .env файл**
 
 ```env
 # .env

@@ -14,6 +14,10 @@ from pydantic_models.order_dto import OrderDTO
 class OrderORMManager(BaseORMManager):
     model = OrderORMModel
 
+    def not_nested_session_scope(self):
+        session = Session(self.engine)
+        session.commit()
+        session.close()
 
     def has_active_order(self, user_id: int) -> bool:
             result = self.get_active_order_by_user_id(user_id)
@@ -124,11 +128,11 @@ class OrderORMManager(BaseORMManager):
             if order.cart_count == 0:
                 raise NoItemsInCartException("No items in cart. Please add items to checkout.")
 
-            if order.user.name != name:
-                order.user.name = name
+            order.user.name = name
+            order.user.phone_number = phone
+            order.user.last_address = address
 
-            if order.user.phone_number != phone:
-                order.user.phone_number = phone
+
 
             session.add(order.user)
             session.flush()
